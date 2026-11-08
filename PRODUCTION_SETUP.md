@@ -1,3 +1,18 @@
+## v7: Captioned four-scene comic (no narration)
+
+The default `ANIMATION_PROVIDER=comic` mode now generates **one four-panel image**, splits it into four illustrations, and places **a readable English caption to the right of each**. The final panel displays the original Chinese Taoist quote, its English translation, and chapter attribution. The 30-second MP4 is **silent**: there is no text-to-speech request and no Runway charge.
+
+```bash
+cd ~/Documents/tao-tech-daily
+git pull
+source .venv/bin/activate
+set -a; source .env; set +a
+python studio.py render 18 --mode production
+open output/tao_18.mp4
+```
+
+Replace 18 with the story you want. The prompt is cached: if the underlying story and insight haven't changed, the existing illustration is reused, but the final composition is rebuilt. Review the quote and translation carefully before approving. The output is still one static page shown for 30 seconds, not four successive scenes.
+
 # Recommended: Four-panel static comic (no Runway)
 
 Update the project with `git pull`. Configure `OPENAI_API_KEY` and `ANIMATION_PROVIDER=comic` in your local `.env`. You do **not** need `RUNWAYML_API_SECRET`.
