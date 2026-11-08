@@ -28,7 +28,8 @@ Replace 20 with a valid story ID. Preview mode uses placeholder art and no voice
 
 ```bash
 export OPENAI_API_KEY='your-private-key'
-export ANIMATION_PROVIDER=kenburns
+export RUNWAYML_API_SECRET='your-private-runway-key'
+export ANIMATION_PROVIDER=runway
 python studio.py render 20 --mode production
 ```
 
@@ -45,6 +46,6 @@ Refresh the gallery page. Only approved/published films are displayed.
 
 ## Costs and caveats
 
-OpenAI image and voice calls incur API usage charges. This app currently creates six images and one narration per production run. Confirm current provider models and prices before rendering. It does not yet generate genuine moving anime scenes; it animates stills with camera motion. Runway is disabled until its clips can be used reliably. The website is not deployed publicly and YouTube Shorts publishing is not implemented.
+OpenAI image and voice calls incur API usage charges. Animated mode requests six images, six Runway clips, and one narration per production run. Confirm current provider models and prices before rendering. It does not yet generate genuine moving anime scenes; it animates stills with camera motion. The Runway pipeline now assembles six genuine 5-second animated clips, but requires live provider testing and incurs costs. It caches finished raw clips for retries. The website is not deployed publicly and YouTube Shorts publishing is not implemented.
 
 For a real public website, configure HTTPS, durable video storage, a production database, backups, and deployment. Keep `studio.py` and secrets off the public server if possible.
