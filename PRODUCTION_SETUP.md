@@ -1,3 +1,21 @@
+# Recommended: Four-panel static comic (no Runway)
+
+Update the project with `git pull`. Configure `OPENAI_API_KEY` and `ANIMATION_PROVIDER=comic` in your local `.env`. You do **not** need `RUNWAYML_API_SECRET`.
+
+The app does not automatically load `.env`. In Terminal, run:
+
+```bash
+cd ~/Documents/tao-tech-daily
+source .venv/bin/activate
+set -a; source .env; set +a
+python studio.py list
+python studio.py render 20 --mode production
+```
+
+Replace 20 with the selected story ID. One AI image is generated containing four cyberpunk anime story panels, and one English narration track is created. FFmpeg renders a 30-second video showing that static four-panel image. Review `output/tao_20.mp4` before running `python studio.py approve 20` and `python studio.py publish 20`.
+
+**Cost:** one OpenAI image call plus one TTS call per episode, instead of six images and six Runway clips. Check current OpenAI pricing and model availability. No Runway billing.
+
 # Tao Tech Daily v3: Production and gallery
 
 ## First-time update on your Mac
