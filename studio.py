@@ -38,6 +38,7 @@ def main():
  p=argparse.ArgumentParser(description='Private Tao Tech Daily production CLI')
  sub=p.add_subparsers(dest='command',required=True)
  sub.add_parser('ingest');sub.add_parser('list')
+ draftcmd=sub.add_parser('draft');draftcmd.add_argument('id',type=int);draftcmd.add_argument('--facts',required=True,help='Verified factual summary from original article')
  for name in ('show','render','approve','publish'):
   cmd=sub.add_parser(name);cmd.add_argument('id',type=int)
   if name=='render':cmd.add_argument('--mode',choices=['preview','production'],default='preview')
@@ -51,6 +52,17 @@ def main():
   elif a.command=='show':
    r=get(c,a.id)
    for k in r.keys():print(k+':',r[k])
+  elif a.command=='draft':
+   from editorial import draft
+   r=get(c,a.id)
+   result=draft(r['headline'],a.facts,r['quote'],r['translation'],r['chapter'])
+   print('DRAFT SCRIPT (review before saving):\\n'+result['script'])
+   print('\\nSTORY TENSION:\\n'+result['insight'])
+   if input('Save this draft? Type SAVE: ')=='SAVE':
+    c.execute('UPDATE stories SET script=?,insight=?,status="draft" WHERE id=?',(result['script'],result['insight'],a.id))
+    c.execute('INSERT OR IGNORE INTO reviews(story_id) VALUES(?)',(a.id,))
+    c.execute('UPDATE reviews SET approved=0 WHERE story_id=?',(a.id,))
+    c.commit();print('Saved. Check facts, quote and story before rendering.')
   elif a.command=='edit':
    get(c,a.id);fields={k:getattr(a,k) for k in ('script','quote','translation','chapter','insight') if getattr(a,k) is not None}
    if not fields:raise ValueError('Provide at least one --script, --quote, --translation, --chapter or --insight')
