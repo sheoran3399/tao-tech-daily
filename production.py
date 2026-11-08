@@ -61,7 +61,10 @@ def voice(script,path):
  except Exception as e:raise PipelineError('Speech provider failed: '+str(e))
 def make_video(row,mode='preview'):
  if mode not in ('preview','production'):raise PipelineError('Mode must be preview or production')
- if mode=='production' and os.getenv('ANIMATION_PROVIDER','runway')=='runway':
+ if mode=='production' and os.getenv('ANIMATION_PROVIDER','comic')=='comic':
+  from comic_pipeline import make_comic_video
+  return make_comic_video(row)
+ if mode=='production' and os.getenv('ANIMATION_PROVIDER','comic')=='runway':
   from animated_pipeline import make_animated_video
   return make_animated_video(row)
  if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):raise PipelineError('Install FFmpeg and FFprobe')
