@@ -1,1 +1,36 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tao Tech Daily</title><style>body{font:16px system-ui;background:#0d1722;color:#f4e9d5;max-width:900px;margin:30px auto;padding:20px}article{background:#1b2c3a;padding:20px;margin:20px 0;border-radius:14px}video{width:270px;max-width:100%}a{color:#b5c6d8}</style><h1>☯ Tao Tech Daily</h1><p>Ancient wisdom for the age of AI.</p><a href="/">Editorial studio</a><main id="gallery"></main><script>fetch('/api/stories').then(r=>r.json()).then(rows=>{let published=rows.filter(x=>x.status==='published');document.getElementById('gallery').innerHTML=published.map(x=>{let e=document.createElement('article');e.textContent=x.headline+' — '+x.translation;let v=document.createElement('video');v.controls=true;v.src='/videos/'+encodeURIComponent(x.video);e.appendChild(v);return e.outerHTML}).join('')||'No published videos yet.'})</script></html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101a22"><title>Tao Tech Daily — Ancient Wisdom, Future Worlds</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0e1820;color:#f6eee0;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif}
+header{padding:32px max(24px,calc((100vw - 1150px)/2));border-bottom:1px solid #293943;display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:20px;letter-spacing:.04em;color:#e5c88d}.eyebrow{color:#cfb781;letter-spacing:.22em;font-size:11px;text-transform:uppercase}
+.hero{text-align:center;padding:90px 24px 70px;background:radial-gradient(ellipse at 50% 0%,#234451 0%,#0e1820 65%)}h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(38px,6vw,76px);line-height:1.1;margin:18px 0}
+.hero p{color:#b8c3c5;font-size:17px;max-width:570px;margin:0 auto;line-height:1.7}
+main{max-width:1150px;margin:0 auto;padding:20px 24px 100px}.section{display:flex;justify-content:space-between;align-items:center;margin:10px 0 25px}
+h2{font:normal 30px Georgia,serif}#gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:28px}
+article{background:#192932;border:1px solid #32424b;border-radius:16px;overflow:hidden;transition:transform .2s}article:hover{transform:translateY(-3px)}
+video{width:100%;aspect-ratio:9/16;object-fit:cover;display:block;background:#0a1118}article .info{padding:20px}article h3{font:normal 21px/1.35 Georgia,serif;margin:8px 0 14px}
+.quote{color:#d6c294;font:italic 17px/1.5 Georgia,serif}.meta{color:#a8b5b8;font-size:12px;letter-spacing:.07em}
+a{color:#d5c18c;text-decoration:none}a:hover{text-decoration:underline}.empty{border:1px dashed #50626b;border-radius:16px;padding:50px;text-align:center;color:#bac7ca}
+footer{border-top:1px solid #293943;text-align:center;color:#9bacb0;padding:32px;font-size:13px}
+</style></head>
+<body><header><div class="brand">☯ TAO TECH DAILY</div><div class="eyebrow">Technology × Taoism</div></header>
+<section class="hero"><div class="eyebrow">Stories for a changing world</div><h1>Ancient wisdom.<br>Future worlds.</h1><p>Technology moves fast. Wisdom moves deeper. Explore short cinematic reflections on the headlines shaping tomorrow.</p></section>
+<main><div class="section"><h2>Latest Films</h2><span class="meta">30-SECOND REFLECTIONS</span></div><div id="gallery"><div class="empty">Loading published films…</div></div></main>
+<footer>TAO TECH DAILY · Made with curiosity, care, and a little wu wei.</footer>
+<script>
+const gallery=document.getElementById('gallery');
+function node(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text)e.textContent=text;return e}
+fetch('/api/videos').then(r=>{if(!r.ok)throw Error('Gallery unavailable');return r.json()}).then(items=>{
+ gallery.replaceChildren();
+ if(!items.length){gallery.append(node('div','empty','No films published yet. New reflections are on their way.'));return}
+ for(const item of items){
+  const card=node('article'),v=node('video'),info=node('div','info');
+  v.controls=true;v.preload='metadata';v.playsInline=true;v.src='/videos/'+encodeURIComponent(item.video);
+  info.append(node('div','meta',item.source||'TECH NEWS'),node('h3','',item.headline||'Untitled film'),node('p','quote',item.translation||''));
+  const link=node('a','', 'Read original article');link.href=item.url||'#';link.target='_blank';link.rel='noopener noreferrer';info.append(link);
+  card.append(v,info);gallery.append(card)
+ }
+}).catch(()=>{gallery.replaceChildren(node('div','empty','Unable to load films. Please try again later.'))});
+</script></body></html>
