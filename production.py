@@ -15,18 +15,18 @@ def font(size):
  return ImageFont.load_default()
 def scenes(row):
  return [
- ('TECH TODAY',row['headline'],'futuristic Shanghai-style city with glowing AI skyline'),
- ('THE CHANGE',row['headline'],'engineer meeting an advanced robot in an ancient Chinese pavilion'),
- ('THE QUESTION','What does progress cost?','ancient scholar watching a futuristic city through a moon gate'),
- ('THE TAO',row['translation'],'Taoist sage by a waterfall, holograms dissolving into mist'),
- ('THE INSIGHT',row['insight'],'Chinese ink-wash mountains morphing into electronic circuits'),
- ('REFLECT','What would wisdom change?','golden lantern drifting on a cyberpunk river at dawn')]
+ ('THE HEADLINE',row['headline'],'cinematic wide view of a futuristic Chinese metropolis, glowing circuits, dramatic atmospheric perspective'),
+ ('THE TURNING POINT','Technology changes everything.','a lone young engineer facing a luminous machine inside a centuries-old Chinese temple'),
+ ('THE QUESTION','But what makes us wise?','a mysterious moon gate connecting ancient misty mountains to a futuristic neon skyline'),
+ ('THE TAO',row['translation'],'a Taoist sage beside a waterfall, futuristic holograms gently dissolving into mist'),
+ ('THE INSIGHT',row['insight'],'vast ink wash mountain peaks interwoven with delicate glowing electronic circuits'),
+ ('REFLECT','What would wisdom change?','single golden lantern floating on a cyberpunk river at sunrise, peaceful cinematic finale')]
 def image(scene,path,mode):
  if mode=='preview':
-  im=Image.new('RGB',(720,1280),(16,34,54));d=ImageDraw.Draw(im);d.ellipse((80,230,640,790),outline=(196,166,105),width=8);d.text((70,800),'LOCAL PREVIEW',font=font(45),fill='white');im.save(path);return
+  im=Image.new('RGB',(720,1280),(16,34,54));d=ImageDraw.Draw(im);d.ellipse((80,230,640,790),outline=(196,166,105),width=8);d.text((70,800),'STORYBOARD PREVIEW',font=font(35),fill='white');im.save(path);return
  key=os.getenv('OPENAI_API_KEY')
  if not key:raise PipelineError('OPENAI_API_KEY missing')
- prompt='Original Chinese donghua anime still, vertical 9:16, ancient Taoist China blended with futuristic cyberpunk technology, ink wash and jade-gold lighting, no text or logos: '+scene[2]
+ prompt='Premium cinematic Chinese donghua animation keyframe, consistent visual language, expressive hand-painted backgrounds, elegant linework, cinematic composition, rich layered depth, subtle jade and warm gold palette with restrained futuristic neon, ancient Chinese philosophy meeting future technology, emotionally evocative, sophisticated art direction, vertical 9:16, no text, no logos, no watermarks: '+scene[2]
  payload=json.dumps({'model':os.getenv('OPENAI_IMAGE_MODEL','gpt-image-1.5'),'prompt':prompt,'size':'1024x1536','n':1}).encode()
  req=Request('https://api.openai.com/v1/images/generations',data=payload,headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
  try:
@@ -67,14 +67,8 @@ def make_video(row,mode='preview'):
  for i,scene in enumerate(scenes(row)):
   raw=work/f'raw{i}.png';still=work/f'still{i}.png';clip=work/f'clip{i}.mp4'
   image(scene,raw,mode);caption(scene,raw,still)
-  if mode=='production' and os.getenv('ANIMATION_PROVIDER')=='runway':
-   try:from runwayml import RunwayML
-   except ImportError:raise PipelineError('Install runwayml')
-   client=RunwayML()
-   task=client.image_to_video.create(model=os.getenv('RUNWAY_MODEL','gen4_turbo'),prompt_image='data:image/png;base64,'+base64.b64encode(raw.read_bytes()).decode(),prompt_text='Gentle cinematic camera motion, '+scene[2],ratio='720:1280',duration=5).wait_for_task_output()
-   if not task.output:raise PipelineError('Runway returned no video')
-   with urlopen(task.output[0],timeout=180) as resp:(work/f'runway{i}.mp4').write_bytes(resp.read())
-   # Captioned still used as fallback to ensure consistent text readability.
+  if mode=='production' and os.getenv('ANIMATION_PROVIDER','kenburns')=='runway':
+   raise PipelineError('Runway animation is not yet supported in the final video. Use ANIMATION_PROVIDER=kenburns to avoid unnecessary charges.')
   run(['ffmpeg','-y','-loglevel','error','-loop','1','-i',str(still),'-vf','zoompan=z=min(zoom+0.0005\\,1.06):d=120:s=720x1280:fps=24,format=yuv420p','-frames:v','120','-an','-c:v','libx264','-pix_fmt','yuv420p',str(clip)])
   clips.append(clip)
  concat=work/'concat.txt';concat.write_text(''.join("file '"+str(p.resolve())+"'\\n" for p in clips).replace('\\n','\n'))
