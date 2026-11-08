@@ -37,7 +37,7 @@ python studio.py show 20
 python studio.py render 20 --mode preview
 ```
 
-Replace `20` with your chosen story ID. The preview is a silent storyboard with placeholder art. It is not the final aesthetic. To create AI-generated images and English speech, configure `OPENAI_API_KEY` and run:
+Replace `20` with your chosen story ID. The preview is a silent storyboard with placeholder art. It is not the final aesthetic. To create real animated scenes, configure `OPENAI_API_KEY`, `RUNWAYML_API_SECRET`, and `ANIMATION_PROVIDER=runway`, then run:
 
 ```bash
 python studio.py render 20 --mode production
@@ -60,9 +60,9 @@ To edit a script, use `python studio.py edit 20 --script "Your revised narration
 - OpenAI text-to-speech: `OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`
 - FFmpeg: video assembly and motion from still images
 - `ANIMATION_PROVIDER=kenburns` (default): animated camera movement over stills
-- **Runway video clips are not integrated into final rendering.** The code explicitly blocks this option rather than charging for unused clips.
+- **Real motion-video mode:** set `ANIMATION_PROVIDER=runway`, `RUNWAYML_API_SECRET`, and `OPENAI_API_KEY`. Six 5-second Runway clips are composited into the final 30-second film, with captions and English voice. Provider calls incur costs; the SDK/model parameters need a live integration test. Completed raw clips are cached for assembly retries.
 - The quote selection is deterministic, not AI-researched. Verify the quote and actual article before publishing.
-- The final video still needs artistic quality testing; code changes alone do not guarantee an appealing result.
+- The final video still needs artistic quality testing; code changes alone do not guarantee an appealing result. Provider calls have not been live-tested. Use a small spending budget before production.
 
 ## Important deployment note
 
