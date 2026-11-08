@@ -1,3 +1,16 @@
+## Recommended beginner mode: one four-panel comic image
+
+No Runway needed. Set `ANIMATION_PROVIDER=comic` (or leave it unset), and provide only an OpenAI API key. Each 30-second episode uses **one** AI-generated four-panel cyberpunk illustration and **one** English narration track, assembled into a static-image MP4 with FFmpeg. The website stays a read-only gallery.
+
+```bash
+python studio.py list
+python studio.py render 20 --mode production
+python studio.py approve 20
+python studio.py publish 20
+```
+
+Replace `20` with your story ID. Review the illustration and narration before approval. Note: AI artwork can misinterpret the four-panel layout. If you want to regenerate, remove `output/comic_20/four_panel_art.png` and `output/comic_20/narration.mp3` only when you deliberately want to rerun paid generation.
+
 # Tao Tech Daily — Film Gallery + Private Production
 
 **The website is now a public-facing gallery, not a video-generation dashboard.** The video pipeline runs privately from your Mac's Terminal. Only approved, published films appear on the site.
@@ -37,7 +50,7 @@ python studio.py show 20
 python studio.py render 20 --mode preview
 ```
 
-Replace `20` with your chosen story ID. The preview is a silent storyboard with placeholder art. It is not the final aesthetic. To create real animated scenes, configure `OPENAI_API_KEY`, `RUNWAYML_API_SECRET`, and `ANIMATION_PROVIDER=runway`, then run:
+Replace `20` with your chosen story ID. The preview is a silent storyboard with placeholder art. It is not the final aesthetic. To create the default four-panel comic, configure `OPENAI_API_KEY` and `ANIMATION_PROVIDER=comic`, then run:
 
 ```bash
 python studio.py render 20 --mode production
