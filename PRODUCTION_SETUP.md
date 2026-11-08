@@ -1,19 +1,50 @@
-# Production setup
+# Tao Tech Daily v3: Production and gallery
 
-1. Install Python 3.11+, FFmpeg and FFprobe.
-2. Create a virtual environment and install requirements.
-3. Copy `.env.example` to `.env` and configure credentials. Never commit `.env`.
-4. Export environment variables (e.g. `set -a; source .env; set +a`) and start `uvicorn app:app --host 127.0.0.1 --port 8000`.
-5. Open the dashboard. Ingest news, review source facts and Taoist quotation, edit the script, render a video, mark verification and approval, and publish.
+## First-time update on your Mac
 
-## Providers
+1. Stop your running server with Control+C.
+2. Run:
+   ```bash
+   cd ~/Documents/tao-tech-daily
+   git pull
+   source .venv/bin/activate
+   python -m pip install -r requirements.txt
+   ```
+3. Start the gallery with `python -m uvicorn app:app --host 127.0.0.1 --port 8000`.
+4. Open `http://127.0.0.1:8000`. You will see only published videos.
 
-- OpenAI Images: `IMAGE_PROVIDER=openai`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL`.
-- OpenAI speech: `VOICE_PROVIDER=openai`, `OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`.
-- Local test: use preview rendering (placeholder artwork, no narration).
-- Optional Runway image-to-video: `ANIMATION_PROVIDER=runway` and `RUNWAYML_API_SECRET`; default `kenburns` animates stills locally.
-- FFmpeg creates 720×1280 H.264 MP4, 30 seconds.
+## Private production
 
-## Operational notes
+Open a second Terminal window, activate the environment and run `python studio.py --help`.
 
-Image and animation providers incur charges. Check provider pricing and supported model names before use. All generated media should be checked for factual accuracy, quote attribution, licensing, visual artifacts and narration quality before publishing. This is a development MVP, not a hardened public service. Secure admin endpoints, configure HTTPS, backups, job queues, rate limits, persistent object storage and monitoring before deploying publicly. YouTube publishing is not yet implemented.
+```bash
+python studio.py ingest
+python studio.py list
+python studio.py show 20
+python studio.py render 20 --mode preview
+```
+
+Replace 20 with a valid story ID. Preview mode uses placeholder art and no voice. To produce a visually richer AI version:
+
+```bash
+export OPENAI_API_KEY='your-private-key'
+export ANIMATION_PROVIDER=kenburns
+python studio.py render 20 --mode production
+```
+
+Do not share or commit your API key. For a longer-term configuration, store it in a local `.env` file and load it into the Terminal before running the command. The application does not automatically load `.env`.
+
+Open the resulting `output/tao_20.mp4` in Finder or QuickTime. Check source facts, quote authenticity, pacing, captions, pronunciation and visual quality.
+
+```bash
+python studio.py approve 20
+python studio.py publish 20
+```
+
+Refresh the gallery page. Only approved/published films are displayed.
+
+## Costs and caveats
+
+OpenAI image and voice calls incur API usage charges. This app currently creates six images and one narration per production run. Confirm current provider models and prices before rendering. It does not yet generate genuine moving anime scenes; it animates stills with camera motion. Runway is disabled until its clips can be used reliably. The website is not deployed publicly and YouTube Shorts publishing is not implemented.
+
+For a real public website, configure HTTPS, durable video storage, a production database, backups, and deployment. Keep `studio.py` and secrets off the public server if possible.
