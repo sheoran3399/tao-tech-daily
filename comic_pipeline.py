@@ -1,75 +1,127 @@
-"""Four-panel cyberpunk donghua comic: one AI image + English narration, 30s MP4."""
-import json, subprocess, hashlib, os
+"""Four-panel silent cyberpunk comic: image on left, editorial caption on right.
+
+One generated 2x2 illustration is split into four scenes, then laid out as
+four horizontal rows in a single 720x1280 frame. Last row carries the
+original Chinese Taoist quote, its English translation and attribution.
+"""
+import hashlib, json, re
 from pathlib import Path
-from PIL import Image, ImageDraw
-from production import OUT, PipelineError, image, voice, run, font
+from PIL import Image, ImageDraw, ImageFont
+from production import OUT, image, run
+
+BG=(10,18,31); GOLD=(231,195,120); WHITE=(245,242,233); MUTED=(185,204,214)
+WIDTH,HEIGHT=720,1280
+
+def choose_font(size, chinese=False):
+    paths=(
+        ['/System/Library/Fonts/PingFang.ttc',
+         '/System/Library/Fonts/Hiragino Sans GB.ttc',
+         '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc']
+        if chinese else
+        ['/System/Library/Fonts/Supplemental/Arial.ttf',
+         '/Library/Fonts/Arial.ttf',
+         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']
+    )
+    for path in paths:
+        try:return ImageFont.truetype(path,size)
+        except OSError:pass
+    return ImageFont.load_default()
+
+def lines_for(draw, text, font, max_width):
+    # Chinese quotes wrap by character; English captions wrap by word.
+    tokens=list(text) if re.search(r'[\u3400-\u9fff]',text) else text.split()
+    join='' if re.search(r'[\u3400-\u9fff]',text) else ' '
+    lines=[]; current=''
+    for token in tokens:
+        trial=current+join+token if current else token
+        if draw.textbbox((0,0),trial,font=font)[2]>max_width and current:
+            lines.append(current);current=token
+        else:current=trial
+    if current:lines.append(current)
+    return lines
+
+def draw_wrapped(draw, text, x, y, width, height, base_size, color, chinese=False):
+    for size in range(base_size,15,-2):
+        f=choose_font(size,chinese)
+        lines=lines_for(draw,text,f,width)
+        step=int(size*1.38)
+        if len(lines)*step<=height:break
+    for line in lines:
+        draw.text((x,y),line,font=f,fill=color)
+        y+=step
+    return y
 
 def make_comic_video(row):
-    work=OUT/("comic_"+str(row["id"]))
+    work=OUT/('comic_'+str(row['id']))
     work.mkdir(parents=True,exist_ok=True)
-    raw=work/"four_panel_art.png"
-    final_image=work/"four_panel_final.png"
-    audio=work/"narration.mp3"
+    raw=work/'four_panel_art.png'
+    final=work/'four_panel_final.png'
     dest=OUT/f"tao_{row['id']}.mp4"
-    # Use the actual editorial insight rather than a generic AI-versus-sage plot.
-    tension=row["insight"].strip()
-    wisdom=row["translation"].strip()
-    scene=(
-      "ONE unified vertical 2-by-2 COMIC PAGE with EXACTLY FOUR clearly separated equally sized "
-      "cinematic Chinese donghua anime panels. Thin gold dividing lines, NO speech bubbles, "
-      "NO typography, NO letters. Same protagonist throughout: young Chinese woman, short black hair, "
-      "indigo tech jacket with gold trim. Beautiful futuristic Shanghai cyberpunk aesthetic, "
-      "electric cyan, magenta, deep indigo and warm gold, cinematic hand-painted 2D anime. "
-      "Read panels LEFT TO RIGHT, TOP TO BOTTOM. "
-      "PANEL 1 upper left: breaking technology news symbolized by glowing AI skyscrapers, "
-      "holographic circuitry and neon city; topic: "+row["headline"]+". "
-      "PANEL 2 upper right: dramatize the HUMAN TENSION in this exact story: "+tension+". Show a concrete emotional choice through expression and action, not a generic robot confrontation. "
-      "PANEL 3 lower left: a meaningful visual metaphor for this Taoist insight: "+wisdom+". Integrate flowing water, stillness or balance only if relevant. "
-      "PANEL 4 lower right: show a SPECIFIC consequence of applying the wisdom to the dilemma, not a generic sunrise. The protagonist makes a visible, deliberate choice. "
-      "One cohesive story across four distinct panels, consistent characters and world, "
-      "expressive faces, sophisticated compositions, absolutely no text."
+    insight=(row.get('insight') or '').strip()
+    translation=(row.get('translation') or '').strip()
+    quote=(row.get('quote') or '').strip()
+    chapter=(row.get('chapter') or '').strip()
+    if not quote or not translation or not chapter:
+        raise ValueError('Taoist quote, English translation and chapter must be supplied')
+    prompt=(
+      'A SINGLE 2x2 grid of EXACTLY FOUR distinct Chinese donghua cyberpunk anime '
+      'story illustrations, no words, no captions, no letters, no watermarks. '
+      'Same protagonist in every panel: young Chinese woman with short black hair '
+      'and indigo jacket with gold trim. Rich cyan-magenta neon with gold accents. '
+      'Upper-left: the news topic '+row['headline']+'. '
+      'Upper-right: a human conflict specifically about '+insight+'. '
+      'Lower-left: symbolic Taoist insight '+translation+'. '
+      'Lower-right: the protagonist making a specific thoughtful choice that resolves the conflict. '
+      'Beautiful 2D anime composition, four equally sized panels with clear borders.'
     )
-    # A changed prompt gets a new image; avoid accidentally reusing an older story illustration.
-    signature=hashlib.sha256(scene.encode()).hexdigest()
-    prompt_marker=work/"image_prompt.sha256"
-    if not raw.exists() or not prompt_marker.exists() or prompt_marker.read_text()!=signature:
-        image(("FOUR-PANEL STORY",row["headline"],scene),raw,"production")
-        prompt_marker.write_text(signature)
-    im=Image.open(raw).convert("RGB")
-    w,h=im.size
-    # Preserve all four panels while fitting a vertical frame.
-    scale=min(720/w,1100/h)
-    im=im.resize((round(w*scale),round(h*scale)),Image.Resampling.LANCZOS)
-    canvas=Image.new("RGB",(720,1280),(10,17,30))
-    x=(720-im.width)//2
-    y=28+(1100-im.height)//2
-    canvas.paste(im,(x,y))
-    d=ImageDraw.Draw(canvas)
-    title="TAO TECH DAILY"
-    d.text((32,1160),title,font=font(29),fill=(229,196,125))
-    d.text((32,1205),"Ancient wisdom. Future worlds.",font=font(20),fill=(226,230,236))
-    canvas.save(final_image)
-    voice_signature=hashlib.sha256((row["script"]+os.getenv("OPENAI_TTS_MODEL","tts-1")+os.getenv("OPENAI_TTS_VOICE","alloy")).encode()).hexdigest()
-    voice_marker=work/"voice.sha256"
-    if not audio.exists() or not voice_marker.exists() or voice_marker.read_text()!=voice_signature:
-        voice(row["script"],audio)
-        voice_marker.write_text(voice_signature)
-    try:
-        duration=float(subprocess.check_output([
-          "ffprobe","-v","error","-show_entries","format=duration",
-          "-of","default=noprint_wrappers=1:nokey=1",str(audio)
-        ]).decode().strip())
-    except Exception as e:raise PipelineError("Cannot inspect narration: "+str(e))
-    if duration>42:raise PipelineError("Narration exceeds supported length; shorten the script.")
-    speed=max(0.5,duration/29.5)
-    run(["ffmpeg","-y","-loglevel","error","-loop","1","-framerate","24",
-         "-i",str(final_image),"-i",str(audio),
-         "-filter_complex",f"[1:a]atempo={speed:.4f},apad,atrim=0:30[a]",
-         "-map","0:v","-map","[a]","-t","30",
-         "-c:v","libx264","-pix_fmt","yuv420p","-c:a","aac","-movflags","+faststart",str(dest)])
-    (work/"manifest.json").write_text(json.dumps({
-      "story_id":row["id"],"style":"four_panel_comic","mode":"production",
-      "image":str(final_image),"video":str(dest),"status":"awaiting_review"
+    sig=hashlib.sha256(prompt.encode()).hexdigest()
+    marker=work/'image_prompt.sha256'
+    if not raw.exists() or not marker.exists() or marker.read_text()!=sig:
+        image(('FOUR-PANEL STORY',row['headline'],prompt),raw,'production')
+        marker.write_text(sig)
+    source=Image.open(raw).convert('RGB')
+    w,h=source.size
+    crops=[source.crop(box) for box in [
+      (0,0,w//2,h//2),(w//2,0,w,h//2),
+      (0,h//2,w//2,h),(w//2,h//2,w,h)]]
+    canvas=Image.new('RGB',(WIDTH,HEIGHT),BG)
+    draw=ImageDraw.Draw(canvas)
+    draw.text((25,13),'TAO TECH DAILY',font=choose_font(24),fill=GOLD)
+    draw.text((25,43),'TECHNOLOGY  /  TAOISM',font=choose_font(14),fill=MUTED)
+    captions=[
+      ('01  THE NEWS',row['headline']),
+      ('02  THE DILEMMA',insight or 'What does this change for people?'),
+      ('03  THE WISDOM','A different way to see progress.'),
+      ('04  THE TAO',None)
+    ]
+    top=78;row_h=290;img_w=315
+    for idx,(pic,(label,caption)) in enumerate(zip(crops,captions)):
+        y=top+idx*row_h
+        # 4 equally sized illustrations on the left; captions alongside on the right.
+        ratio=max(img_w/pic.width,272/pic.height)
+        resized=pic.resize((round(pic.width*ratio),round(pic.height*ratio)),Image.Resampling.LANCZOS)
+        dx=(resized.width-img_w)//2;dy=(resized.height-272)//2
+        canvas.paste(resized.crop((dx,dy,dx+img_w,dy+272)),(20,y+4))
+        draw.rectangle((20,y+4,335,y+276),outline=GOLD,width=2)
+        x=353
+        draw.text((x,y+8),label,font=choose_font(18),fill=GOLD)
+        if idx<3:
+            draw_wrapped(draw,caption,x,y+48,335,210,25,WHITE)
+        else:
+            yy=draw_wrapped(draw,quote,x,y+44,335,86,26,GOLD,True)
+            yy=draw_wrapped(draw,translation,x,yy+12,335,110,22,WHITE)
+            draw_wrapped(draw,chapter,x,min(yy+10,y+246),335,35,16,MUTED)
+        draw.line((20,y+row_h-5,700,y+row_h-5),fill=(49,67,82),width=1)
+    draw.text((25,1250),'Ancient wisdom. Future worlds.',font=choose_font(17),fill=MUTED)
+    canvas.save(final)
+    # Silent 30-second MP4; no OpenAI speech request and no audio track.
+    run(['ffmpeg','-y','-loglevel','error','-loop','1','-framerate','24',
+         '-i',str(final),'-t','30','-c:v','libx264','-pix_fmt','yuv420p',
+         '-movflags','+faststart',str(dest)])
+    (work/'manifest.json').write_text(json.dumps({
+      'story_id':row['id'],'style':'four_panel_captioned_comic',
+      'mode':'production','narration':False,'image':str(final),
+      'video':str(dest),'status':'awaiting_review'
     },indent=2))
-    return {"video":"/videos/"+dest.name,"mode":"production",
-            "style":"four_panel_comic","status":"awaiting_review"}
+    return {'video':'/videos/'+dest.name,'mode':'production',
+            'style':'four_panel_captioned_comic','status':'awaiting_review'}
