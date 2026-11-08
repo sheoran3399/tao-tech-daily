@@ -1,3 +1,26 @@
+## v6: Story-first editorial improvements
+
+The main issue in v5 was generic storytelling. New `editorial.py` can draft a more specific, emotionally engaging English script from **facts you personally verified**. It will not retrieve or verify full articles automatically.
+
+```bash
+cd ~/Documents/tao-tech-daily
+git pull
+source .venv/bin/activate
+set -a; source .env; set +a
+python studio.py show 18
+python studio.py draft 18 --facts "Write a short factual summary you verified from the linked article here"
+```
+
+Review the generated script and insight before typing `SAVE`. Verify the Taoist quotation and attribution too; the old automatic quote pairing may be unrelated. If necessary, edit with `python studio.py edit 18 --quote "..." --translation "..." --chapter "..." --insight "..."`.
+
+For a different English narration voice, set `OPENAI_TTS_VOICE=nova` in `.env` and reload it. This is a voice preference, not a guarantee of natural delivery.
+
+```bash
+python studio.py render 18 --mode production
+```
+
+The comic prompt now uses your actual editorial tension and quote, rather than a generic machine confrontation and sunrise. When the story or voice changes, cached assets are regenerated where necessary. Image and speech generation incur API costs. **Code changes have not been live-rendered or visually reviewed.**
+
 ## Recommended beginner mode: one four-panel comic image
 
 No Runway needed. Set `ANIMATION_PROVIDER=comic` (or leave it unset), and provide only an OpenAI API key. Each 30-second episode uses **one** AI-generated four-panel cyberpunk illustration and **one** English narration track, assembled into a static-image MP4 with FFmpeg. The website stays a read-only gallery.
