@@ -1,5 +1,5 @@
 """Four-panel cyberpunk donghua comic: one AI image + English narration, 30s MP4."""
-import json, subprocess
+import json, subprocess, hashlib, os
 from pathlib import Path
 from PIL import Image, ImageDraw
 from production import OUT, PipelineError, image, voice, run, font
@@ -11,6 +11,9 @@ def make_comic_video(row):
     final_image=work/"four_panel_final.png"
     audio=work/"narration.mp3"
     dest=OUT/f"tao_{row['id']}.mp4"
+    # Use the actual editorial insight rather than a generic AI-versus-sage plot.
+    tension=row["insight"].strip()
+    wisdom=row["translation"].strip()
     scene=(
       "ONE unified vertical 2-by-2 COMIC PAGE with EXACTLY FOUR clearly separated equally sized "
       "cinematic Chinese donghua anime panels. Thin gold dividing lines, NO speech bubbles, "
@@ -20,18 +23,18 @@ def make_comic_video(row):
       "Read panels LEFT TO RIGHT, TOP TO BOTTOM. "
       "PANEL 1 upper left: breaking technology news symbolized by glowing AI skyscrapers, "
       "holographic circuitry and neon city; topic: "+row["headline"]+". "
-      "PANEL 2 upper right: protagonist encounters a dilemma about technological progress, "
-      "facing an imposing luminous machine in the rain. "
-      "PANEL 3 lower left: she meets an elderly Taoist sage beside flowing water in an ancient "
-      "courtyard hidden within the futuristic city; calm philosophical revelation. "
-      "PANEL 4 lower right: protagonist finds harmony between the natural world and technology "
-      "at golden sunrise, hopeful thoughtful conclusion. "
+      "PANEL 2 upper right: dramatize the HUMAN TENSION in this exact story: "+tension+". Show a concrete emotional choice through expression and action, not a generic robot confrontation. "
+      "PANEL 3 lower left: a meaningful visual metaphor for this Taoist insight: "+wisdom+". Integrate flowing water, stillness or balance only if relevant. "
+      "PANEL 4 lower right: show a SPECIFIC consequence of applying the wisdom to the dilemma, not a generic sunrise. The protagonist makes a visible, deliberate choice. "
       "One cohesive story across four distinct panels, consistent characters and world, "
       "expressive faces, sophisticated compositions, absolutely no text."
     )
-    # Generate one image, not four separate paid calls.
-    if not raw.exists():
+    # A changed prompt gets a new image; avoid accidentally reusing an older story illustration.
+    signature=hashlib.sha256(scene.encode()).hexdigest()
+    prompt_marker=work/"image_prompt.sha256"
+    if not raw.exists() or not prompt_marker.exists() or prompt_marker.read_text()!=signature:
         image(("FOUR-PANEL STORY",row["headline"],scene),raw,"production")
+        prompt_marker.write_text(signature)
     im=Image.open(raw).convert("RGB")
     w,h=im.size
     # Preserve all four panels while fitting a vertical frame.
@@ -46,7 +49,11 @@ def make_comic_video(row):
     d.text((32,1160),title,font=font(29),fill=(229,196,125))
     d.text((32,1205),"Ancient wisdom. Future worlds.",font=font(20),fill=(226,230,236))
     canvas.save(final_image)
-    if not audio.exists():voice(row["script"],audio)
+    voice_signature=hashlib.sha256((row["script"]+os.getenv("OPENAI_TTS_MODEL","tts-1")+os.getenv("OPENAI_TTS_VOICE","alloy")).encode()).hexdigest()
+    voice_marker=work/"voice.sha256"
+    if not audio.exists() or not voice_marker.exists() or voice_marker.read_text()!=voice_signature:
+        voice(row["script"],audio)
+        voice_marker.write_text(voice_signature)
     try:
         duration=float(subprocess.check_output([
           "ffprobe","-v","error","-show_entries","format=duration",
